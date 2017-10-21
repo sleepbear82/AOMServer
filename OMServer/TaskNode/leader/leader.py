@@ -152,7 +152,7 @@ def vadd_job_message(message):
         jcron = json.loads(jobject[0]['module_cron'])
         vadd_job(jcron, message)
     except Exception, e:
-        vprint('[%s]received a exception %s' ,('vadd_job_message', str(e)), logger, logging.ERROR)
+        vprint('[%s]received a exception %s' ,('vadd_job_message', message + str(e)), logger, logging.ERROR)
 
 # 重新加载定时任务
 def get_scheduler_task():
@@ -211,7 +211,6 @@ def transfer_schedulertask_toworker(hostport, lschedulerList, startp, endp):
         (host, port) = hostport.split('_')
         rpycconn=rpyc.connect(host,int(port))
         rpycconn.root.login('OMuser','KJS23o4ij09gHF734iuhsdfhkGYSihoiwhj38u4h')
-        print host + port
         vprint('sync scheduler task [host:=%s port:=%s]' , (host, port), logger, logging.INFO)
         result=tdecode_rpyc_res(rpycconn.root.SyncTaskerStart(),RPYC_SECRET_KEY)
         if result['code'] == 'C_0000':

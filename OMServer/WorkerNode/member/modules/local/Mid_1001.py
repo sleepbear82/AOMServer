@@ -15,4 +15,4 @@ class Modulehandle():
         self.hosts=target_host(hosts,"IP")
 
     def run(self):
-        return "简单的回复问题！"
+        return "简单的回复问题."

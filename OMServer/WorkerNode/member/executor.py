@@ -16,10 +16,10 @@ if __name__ == '__main__':
         mid="Mid_"+moduleid
         host = jmessage['host']
         param = jmessage['param']
-        platformstr = ''
+        platformstr = 'local'
         if jmessage.has_key('platform'):
             platformstr = jmessage['platform']
-            sys.path.append(os.sep.join((unicode(sysdir,'GB2312'),'modules/'+platformstr)))
+        sys.path.append(os.sep.join((unicode(sysdir,'GB2312'),'modules/'+platformstr)))
 
         importstring = "from "+mid+" import Modulehandle"
         try:
@@ -32,7 +32,6 @@ if __name__ == '__main__':
                 returnString = runmessages
             else:
                 returnString = runmessages
-
             print tencode(returnString.encode('utf-8'), RPYC_SECRET_KEY)
         except Exception, e:
             print tencode(u"Module \""+mid+u"\" does not exist, Please add it" + e.message,RPYC_SECRET_KEY)

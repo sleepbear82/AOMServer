@@ -144,8 +144,11 @@ def runcommands(message,logger):
         vprint('prepare to invoke executor %s' ,(str(ijsonstr)), logger, logging.DEBUG)
         p = subprocess.Popen('python executor.py ' + ijsonstr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         p.wait()
-        result = tdecode(p.stdout.read(), RPYC_SECRET_KEY)
+        sresult= p.stdout.read()
+        print 'ss:' + sresult
+        result = tdecode(sresult, RPYC_SECRET_KEY)
         dresult = result.decode('utf-8')
+        print 'dresult' + dresult
         response['response'].append(result)
         if p.returncode != 0:
             vprint('response error: body: %s \n',(dresult,), logger, logging.ERROR)
