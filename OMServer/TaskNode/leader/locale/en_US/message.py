@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 MESSAGEING = {
      'task %s is start!': 'task %s is start!',
-     'connect to zookeeper host:=%s port:=%s!': 'connect to zookeeper host:=%s port:=%s!',
+     'connect to zookeeper hosts:=%s!': 'connect to zookeeper hosts:=%s!',
      'waiting for the election!': 'waiting for the election!',
      'task %s is stop!': 'task %s is stop!',
      '[%s]received a exception %s': '[%s]received a exception %s',
@@ -22,7 +22,7 @@ MESSAGEING = {
      'QueryWorks exception: %s': 'QueryWorks exception: %s',
      '[%s]received a exception %s %s': '[%s]received a exception %s %s',
 
-     'connect to activemq host:=%s port:=%s!': 'connect to activemq host:=%s port:=%s!',
+     'connect to activemq hosts:=%s!': 'connect to activemq hosts:=%s!',
      'observation thread is stop!':'observation thread is stop!',
      'blance task to followed workers':'blance task to followed workers',
      'followed workers are changed!':'followed workers are changed!',

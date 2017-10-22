@@ -1,28 +1,40 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-IS_CONSOLE_PRINT=True
-ZOOKEEPER_HOST = "127.0.0.1"
-ZOOKEEPER_PORT = "2181"
-MONITOR_PARENT_PATH = "/test"
-MONITOR_LEADER_INTEVAL = 60
-MONITOR_LEADER_AUTO_BALANCE = True
+STATIC_CONFIGS = {
+    'WORK_ID':'28539fcc-b674-4ba2-8651-fb7ecfab11b8-001',
+    'WATCHER':{
+        'SLEEP_INTEVAL':60,
+        'BALANCE':{
+            'AUTO':True
+        },
+    },
+    'ZOOKEEPERS': {
+        'HOSTS':'127.0.0.1:2181',
+        'START_PATH':'/test',
+    },
+    'ACTIVEMQ': {
+        'HOSTS':'127.0.0.1:61613',
+        'USER':'',
+        'PASSWORD':'',
+        'RECONNECT_SLEEP_INTEVAL':10,
+    },
+    'DATABASES':{
+        'NAME': 'aom',
+        'USER':'postgres',
+        'PASSWORD':'postgres',
+        'HOST':'127.0.0.1',
+        'PORT':'5432',
+    },
+    'RPYCS':{
+        'SECRET_KEY':'ctmj#&amp;8hrgow_^sj$ejt@9fzsmh_o)-=(byt5jmg=e3#foya6u',
+        'HOST':'127.0.0.1',
+        'PORT':'11511',
+        'WEIGHT':'1',
+    },
+    'LOGS':{
+        'CONSOLE_PRINT':True,
+        'LEVEL':'DEBUG',
+    },
+}
 
-ACTIVEMQ_HOST='127.0.0.1'
-ACTIVEMQ_PORT=61613
-ACTIVEMQ_USER=''
-ACTIVEMQ_PASSWORD=''
-
-DB_HOST='127.0.0.1'
-DB_PORT='5432'
-DB_DATABASE='aom'
-DB_USERNAME='postgres'
-DB_PASSWORD='postgres'
-
-RPYC_LEADER_HOST='127.0.0.1'
-RPYC_LEADER_PORT=11511
-RPYC_SECRET_KEY = "ctmj#&amp;8hrgow_^sj$ejt@9fzsmh_o)-=(byt5jmg=e3#foya6u"
-
-RPYC_WORK_HOST=''
-RPYC_WORK_PORT=''
-RPYC_WORK_WEIGHT='1'

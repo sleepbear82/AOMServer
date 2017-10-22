@@ -9,7 +9,7 @@ import os
 import sys
 # 命令行交互
 import subprocess
-
+import time
 from hashlib import sha1
 from config import *
 
@@ -22,6 +22,13 @@ try:
     exec importstring
 except Exception, e:
     print str(e)
+
+IS_CONSOLE_PRINT = False
+if STATIC_CONFIGS.has_key('LOGS') == True:
+    if STATIC_CONFIGS['LOGS'].has_key('CONSOLE_PRINT') == True:
+        IS_CONSOLE_PRINT=STATIC_CONFIGS['LOGS']['CONSOLE_PRINT']
+
+RPYC_SECRET_KEY=STATIC_CONFIGS['RPYCS']['SECRET_KEY']
 
 def crypt(data, key):
     """RC4 algorithm"""
@@ -133,23 +140,39 @@ def tdecode_rpyc_res(data, key):
     result = tdecode(data,key)
     return json.loads(result)
 
+def as_activemq_hosts_list(data):
+    lists=[]
+    datas = data.split(',')
+    for i in range(0,len(datas)):
+        (host, port) = datas[i].split(':')
+        lists.append((host, int(port)))
+    return lists
+
+def get_time_stamp():
+    ct = time.time()
+    local_time = time.localtime(ct)
+    data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
+    data_secs = (ct - long(ct)) * 1000
+    time_stamp = "%s.%03d" % (data_head, data_secs)
+    return str(time_stamp)
+
 def runcommands(message,logger):
     jsonobj = json.loads(message)
     response={}
     response['code'] = "0"
     response['response'] = []
+    response['time']={}
+    response['time']['start'] = get_time_stamp()
     for i in range(0, len(jsonobj)):
         ijsonstr = jsonobj[i]['module_oper']
         ijsonstr = tencode(ijsonstr, RPYC_SECRET_KEY);
         vprint('prepare to invoke executor %s' ,(str(ijsonstr)), logger, logging.DEBUG)
         p = subprocess.Popen('python executor.py ' + ijsonstr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         p.wait()
-        sresult= p.stdout.read()
-        print 'ss:' + sresult
-        result = tdecode(sresult, RPYC_SECRET_KEY)
+        result = tdecode(p.stdout.read(), RPYC_SECRET_KEY)
         dresult = result.decode('utf-8')
-        print 'dresult' + dresult
         response['response'].append(result)
+        response['time']['end'] = get_time_stamp()
         if p.returncode != 0:
             vprint('response error: body: %s \n',(dresult,), logger, logging.ERROR)
             response['code'] = "1"

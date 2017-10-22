@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 MESSAGEING = {
      'task %s is start!': '任务【%s】开始执行!',
-     'connect to zookeeper host:=%s port:=%s!': '尝试连接到zookeeper host:=%s port:=%s!',
+     'connect to zookeeper hosts:=%s!': '尝试连接到zookeeper hosts:=%s!',
      'waiting for the election!': '等待选举成功!',
      'task %s is stop!': '任务【%s】停止运行!',
      '[%s]received a exception %s': '【%s】发生错误 %s',
@@ -22,7 +22,7 @@ MESSAGEING = {
      'QueryWorks exception: %s': 'QueryWorks发生错误: %s',
      '[%s]received a exception %s %s': '【%s】发生错误 %s %s',
 
-     'connect to activemq host:=%s port:=%s!': '尝试连接到activemq host:=%s port:=%s!',
+     'connect to activemq hosts:=%s!': '尝试连接到activemq hosts:=%s',
      'observation thread is stop!':'观察者线程已经停止运行!',
      'blance task to followed workers':'尝试重新负载定时任务到子工作节点上',
      'followed workers are changed!':'定时任务执行子节点发生变更!',

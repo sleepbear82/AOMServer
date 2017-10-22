@@ -27,11 +27,80 @@ from modules.modules import *
 from libraries import *
 
 # 当前worker的id
-workerid = uuid.uuid4()
-pid= os.getpid()
+workerid=''
+if STATIC_CONFIGS.has_key('WORK_ID') == True:
+    workerid = STATIC_CONFIGS['WORK_ID']
+if workerid == '':
+    workerid = uuid.uuid4()
 
 # 初始化变量
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s', filename=sys.path[0]+'/logs/server_' + str(workerid) + '.log', filemode='a')
+logLevel=logging.INFO
+if STATIC_CONFIGS.has_key('LOGS') == True:
+    if STATIC_CONFIGS['LOGS']['LEVEL'] == 'DEBUG':
+        logLevel=logging.DEBUG
+    elif STATIC_CONFIGS['LOGS']['LEVEL'] == 'INFO':
+        logLevel=logging.INFO
+    elif STATIC_CONFIGS['LOGS']['LEVEL'] == 'WARN':
+        logLevel=logging.WARN
+    else:
+        logLevel=logging.ERROR
+else:
+    logLevel=logging.ERROR
+
+RPYC_SECRET_KEY=STATIC_CONFIGS['RPYCS']['SECRET_KEY']
+RPYC_HOST = ''
+RPYC_PORT = ''
+if STATIC_CONFIGS['RPYCS'].has_key('HOST') == True:
+    RPYC_HOST=STATIC_CONFIGS['RPYCS']['HOST']
+
+if STATIC_CONFIGS['RPYCS'].has_key('PORT') == True:
+    RPYC_PORT=STATIC_CONFIGS['RPYCS']['PORT']
+
+# 不指定启动机器及端口，则随机生成
+if RPYC_HOST == '':
+    RPYC_HOST = socket.gethostbyname(socket.gethostname())
+
+if RPYC_PORT == '':
+    RPYC_PORT = random_port(17000,18000, 10)
+
+ZOOKEEPER_HOSTS='127.0.0.1:2181'
+ZOOKEEPER_PARENT_PATH='/test'
+if STATIC_CONFIGS.has_key('ZOOKEEPERS') == True:
+    if STATIC_CONFIGS['ZOOKEEPERS'].has_key('HOSTS') == True:
+        ZOOKEEPER_HOSTS = STATIC_CONFIGS['ZOOKEEPERS']['HOSTS']
+    if STATIC_CONFIGS['ZOOKEEPERS'].has_key('START_PATH') == True:
+        ZOOKEEPER_PARENT_PATH = STATIC_CONFIGS['ZOOKEEPERS']['START_PATH']
+
+ACTIVEMQ_HOSTS='127.0.0.1:61613'
+ACTIVEMQ_USER=''
+ACTIVEMQ_PASSWORD=''
+RECONNECT_SLEEP_INTEVAL=60
+if STATIC_CONFIGS.has_key('ACTIVEMQ') == True:
+    if STATIC_CONFIGS['ACTIVEMQ'].has_key('HOSTS') == True:
+        ACTIVEMQ_HOSTS=STATIC_CONFIGS['ACTIVEMQ']['HOSTS']
+    if STATIC_CONFIGS['ACTIVEMQ'].has_key('USER') == True:
+        ACTIVEMQ_USER=STATIC_CONFIGS['ACTIVEMQ']['USER']
+    if STATIC_CONFIGS['ACTIVEMQ'].has_key('PASSWORD') == True:
+        ACTIVEMQ_PASSWORD=STATIC_CONFIGS['ACTIVEMQ']['PASSWORD']
+    if STATIC_CONFIGS['ACTIVEMQ'].has_key('RECONNECT_SLEEP_INTEVAL') == True:
+        RECONNECT_SLEEP_INTEVAL=STATIC_CONFIGS['ACTIVEMQ']['RECONNECT_SLEEP_INTEVAL']
+
+ACTIVEMQ_HOSTS_LISTS = as_activemq_hosts_list(ACTIVEMQ_HOSTS)
+
+WATCHER_SLEEP_INTEVAL=60
+LEADER_AUTO_BALANCE=False
+if STATIC_CONFIGS.has_key('WATCHER') == True:
+    if STATIC_CONFIGS['WATCHER'].has_key('SLEEP_INTEVAL') == True:
+        WATCHER_SLEEP_INTEVAL=STATIC_CONFIGS['WATCHER']['SLEEP_INTEVAL']
+
+    if STATIC_CONFIGS['WATCHER'].has_key('BALANCE') == True:
+        if STATIC_CONFIGS['WATCHER']['BALANCE'].has_key('AUTO') == True:
+            LEADER_AUTO_BALANCE=STATIC_CONFIGS['WATCHER']['BALANCE']['AUTO']
+
+# 当前pid
+pid= os.getpid()
+# 初始化日志
+logging.basicConfig(level=logLevel, format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s', filename=sys.path[0]+'/logs/server_' + str(workerid) + '.log', filemode='a')
 logger = logging.getLogger()
 
 # 初始化定时器
@@ -41,28 +110,25 @@ scheduler.start()
 mqClient = None
 # zookeeper链接
 zkClient = None
+# rpycserver链接
+rpycserver = None
+
 gworkers={}
 gschedulerList=[]
 gschedulerListCount=0
 
 UnhandledInterruptHappend=False
+# default-encoding
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sysdir=os.path.abspath(os.path.dirname(__file__))
 
-# 不指定启动机器及端口，则随机生成
-if RPYC_LEADER_HOST == '':
-    RPYC_LEADER_HOST = socket.gethostbyname(socket.gethostname())
-
-if RPYC_LEADER_PORT == '':
-    RPYC_LEADER_PORT = random_port(17000,18000, 10)
-
 # 链接activemq
 def connect_and_subscribe(conn):
     conn.start()
-    if not ACTIVEMQ_USER and ACTIVEMQ_USER <> '':
+    if ACTIVEMQ_USER <> '':
         vprint('connect activemq with auth!', None, logger, logging.INFO)
-        conn.connect(ACTIVEMQ_USER, ACTIVEMQ_USER, wait=True)
+        conn.connect(ACTIVEMQ_USER, ACTIVEMQ_PASSWORD, wait=True)
     else:
         conn.connect()
 
@@ -81,7 +147,7 @@ class ActivemqMsgListener(stomp.ConnectionListener):
         vprint('disconnect to activemq', None, logger, logging.INFO)
         global UnhandledInterruptHappend
         if UnhandledInterruptHappend == False:
-            time.sleep(30)
+            time.sleep(RECONNECT_SLEEP_INTEVAL)
             vprint('reconnect to activemq', None,logger, logging.INFO)
             connect_and_subscribe(self.conn)
         else:
@@ -162,7 +228,7 @@ def get_scheduler_task():
 
     jschedulerList=[]
     try:
-        dbconn = psycopg2.connect(database=DB_DATABASE, user=DB_USERNAME, password=DB_PASSWORD, host=DB_HOST, port=DB_PORT)
+        dbconn = psycopg2.connect(database=STATIC_CONFIGS['DATABASES']['NAME'], user=STATIC_CONFIGS['DATABASES']['USER'], password=STATIC_CONFIGS['DATABASES']['PASSWORD'], host=STATIC_CONFIGS['DATABASES']['HOST'], port=STATIC_CONFIGS['DATABASES']['PORT'])
         dbcur = dbconn.cursor()
         dbcur.execute("SELECT id,parentid,name,module_name,module_oper,module_cron,module_order FROM aom_task_schedule order by id, parentid, module_order asc;")
         rows = dbcur.fetchall()
@@ -337,12 +403,11 @@ def reload_scheduler_task(lwork):
 # 获取zk节点的值
 def get_zknode_int_value(zkClient, vpath):
     try:
-        data, stat = zkClient.get(str(vpath),watch=None)
-        if data is not None:
-            if data == '':
-                return 1
-            return int(data)
-        return 1
+        if zkClient.exists(vpath):
+            data, stat = zkClient.get(str(vpath),watch=None)
+            if data is not None and data <> '':
+                return int(data)
+            return 1
     except Exception, e:
         vprint('[%s]received a exception %s %s' ,('get_zknode_int_value',vpath, str(e)), logger, logging.ERROR)
     return None
@@ -350,10 +415,10 @@ def get_zknode_int_value(zkClient, vpath):
 # 获取zk节点的值
 def get_zknode_str_value(zkClient, vpath):
     try:
-        data, stat = zkClient.get(str(vpath),watch=None)
-        if data is not None:
-            return data.decode('utf-8')
-        return ''
+        if zkClient.exists(vpath):
+            data, stat = zkClient.get(str(vpath),watch=None)
+            if data is not None and data <> '':
+                return data.decode('utf-8')
     except Exception, e:
         vprint('[%s]received a exception %s %s' , ('get_zknode_str_value',vpath, str(e),), logger, logging.ERROR)
     return None
@@ -362,22 +427,22 @@ def get_zknode_str_value(zkClient, vpath):
 def get_worklist_nodevalue(bGetTaskCount):
     global zkClient
     lwork={}
-    if zkClient.exists(MONITOR_PARENT_PATH + "/leader/worker"):
-        children = zkClient.get_children(MONITOR_PARENT_PATH + "/leader/worker")
+    if zkClient.exists(ZOOKEEPER_PARENT_PATH + "/leader/worker"):
+        children = zkClient.get_children(ZOOKEEPER_PARENT_PATH + "/leader/worker")
         if len(children) == 0:
             #worker全部消亡
             vprint('no works or workers are all dead!', None, logger, logging.WARN)
         else:
             for child in children:
                 if not lwork.has_key(child) and child <> 'path':
-                    vchild = get_zknode_int_value(zkClient, str(MONITOR_PARENT_PATH + "/leader/worker/" + child))
+                    vchild = get_zknode_int_value(zkClient, str(ZOOKEEPER_PARENT_PATH + "/leader/worker/" + child))
                     if vchild is not None:
                         lwork[child]={}
                         (lhost,lport) = child.split('_')
                         lwork[child]['host'] = lhost
                         lwork[child]['port'] = lport
                         lwork[child]['weight'] = vchild
-                        lwork[child]['path'] = get_zknode_str_value(zkClient, str(MONITOR_PARENT_PATH + "/leader/worker/path/" + child))
+                        lwork[child]['path'] = get_zknode_str_value(zkClient, str(ZOOKEEPER_PARENT_PATH + "/leader/worker/path/" + child))
                         if bGetTaskCount == True:
                             infos = get_schedulerwroker_infos(child)
                             lwork[child]['count'] = infos['count']
@@ -397,8 +462,8 @@ def get_worklist_nodevalue(bGetTaskCount):
 def set_worklist_nodevalue(jobject):
     global zkClient
     for k,v in jobject.items():
-        if zkClient.exists(MONITOR_PARENT_PATH + "/leader/worker/" + k):
-            zkClient.set(MONITOR_PARENT_PATH + "/leader/worker/" + k, str(v))
+        if zkClient.exists(ZOOKEEPER_PARENT_PATH + "/leader/worker/" + k):
+            zkClient.set(ZOOKEEPER_PARENT_PATH + "/leader/worker/" + k, str(v))
 
 # rpyc服务
 class RpycManagerService(rpyc.Service):
@@ -444,9 +509,9 @@ class RpycManagerService(rpyc.Service):
         lworkers = get_worklist_nodevalue(True)
         lworkers['leader']={}
         lworkers['leader']['count']=str(gschedulerListCount)
-        lworkers['leader']['host'] = str(RPYC_LEADER_HOST)
-        lworkers['leader']['port'] = str(RPYC_LEADER_PORT)
-        lworkers['leader']['path'] = get_zknode_str_value(zkClient, str(MONITOR_PARENT_PATH + "/leader/leader/path"))
+        lworkers['leader']['host'] = str(RPYC_HOST)
+        lworkers['leader']['port'] = str(RPYC_PORT)
+        lworkers['leader']['path'] = get_zknode_str_value(zkClient, str(ZOOKEEPER_PARENT_PATH + "/leader/leader/path"))
         #环境信息
         try:
             # 获取硬件信息
@@ -508,12 +573,12 @@ def worker_monitor(args):
                 gworkers.clear()
                 gworkers = lworkers.copy()
                 vprint('followed workers are changed!', None, logger, logging.INFO)
-                if MONITOR_LEADER_AUTO_BALANCE == True:
+                if LEADER_AUTO_BALANCE == True:
                     vprint('blance task to followed workers', None, logger, logging.INFO)
                     reload_scheduler_task(gworkers)
                 else:
                     pass
-        time.sleep(MONITOR_LEADER_INTEVAL)
+        time.sleep(WATCHER_SLEEP_INTEVAL)
     vprint('observation thread is stop!',None, logger, logging.INFO)
 
 # 选举成为leader线程后，执行函数
@@ -522,14 +587,14 @@ def taskdispacher_leader_func():
     global mqClient
     try:
         # 更新zknode
-        zkClient.ensure_path(MONITOR_PARENT_PATH + "/leader/leader")
-        zkClient.set(MONITOR_PARENT_PATH + "/leader/leader", str(RPYC_LEADER_HOST) + '_' + str(RPYC_LEADER_PORT))
-        zkClient.ensure_path(MONITOR_PARENT_PATH + "/leader/leader/path")
-        zkClient.set(MONITOR_PARENT_PATH + "/leader/leader/path", sysdir.decode("GBK").encode("utf-8"))
+        zkClient.ensure_path(ZOOKEEPER_PARENT_PATH + "/leader/leader")
+        zkClient.set(ZOOKEEPER_PARENT_PATH + "/leader/leader", str(RPYC_HOST) + '_' + str(RPYC_PORT))
+        zkClient.ensure_path(ZOOKEEPER_PARENT_PATH + "/leader/leader/path")
+        zkClient.set(ZOOKEEPER_PARENT_PATH + "/leader/leader/path", sysdir.decode("GBK").encode("utf-8"))
 
         #连接代码分协议版本
-        vprint('connect to activemq host:=%s port:=%s!' ,(ACTIVEMQ_HOST,ACTIVEMQ_PORT), logger, logging.INFO)
-        mqClient = stomp.Connection([(ACTIVEMQ_HOST,ACTIVEMQ_PORT)], heartbeats=(8000, 8000))
+        vprint('connect to activemq hosts:=%s!' ,ACTIVEMQ_HOSTS, logger, logging.INFO)
+        mqClient = stomp.Connection(ACTIVEMQ_HOSTS_LISTS, heartbeats=(8000, 8000))
         mqClient.set_listener('ActivemqMsgSenderListener', ActivemqMsgListener(mqClient))
         connect_and_subscribe(mqClient)
 
@@ -537,8 +602,9 @@ def taskdispacher_leader_func():
         watherthread = threading.Thread(target=worker_monitor,args=(None,))
         watherthread.start()
 
-        vprint('start rpyc connection thread! host:%s port:%s' , (str(RPYC_LEADER_HOST),str(RPYC_LEADER_PORT)), logger, logging.INFO)
-        rpycserver=ThreadedServer(RpycManagerService,port=RPYC_LEADER_PORT,auto_register=False)
+        global rpycserver
+        vprint('start rpyc connection thread! host:%s port:%s' , (str(RPYC_HOST),str(RPYC_PORT)), logger, logging.INFO)
+        rpycserver=ThreadedServer(RpycManagerService,port=int(RPYC_PORT),auto_register=False)
         rpycserver.start()
     except Exception, e:
         vprint('[%s]received a exception %s' , ('taskdispacher_leader_func',str(e),), logger, logging.ERROR)
@@ -553,23 +619,39 @@ def set_interrupt_happend():
 if __name__ == '__main__':
     try:
         vprint('task %s is start!' , (str(workerid),), logger, logging.INFO)
-        vprint('connect to zookeeper host:=%s port:=%s!' , (ZOOKEEPER_HOST,ZOOKEEPER_PORT,), logger, logging.INFO)
+        vprint('connect to zookeeper hosts:=%s!' , (ZOOKEEPER_HOSTS,), logger, logging.INFO)
         # 连接zookeeper
-        zkClient = KazooClient(hosts=ZOOKEEPER_HOST + ':' + ZOOKEEPER_PORT)
+        zkClient = KazooClient(hosts=ZOOKEEPER_HOSTS)
         zkClient.start()
-        if not zkClient.exists(MONITOR_PARENT_PATH + "/leader/electionpath"):
+        if not zkClient.exists(ZOOKEEPER_PARENT_PATH + "/leader/electionpath"):
             # 确认路径，如果有必要则创建该路径
-            zkClient.ensure_path(MONITOR_PARENT_PATH + "/leader/electionpath")
+            zkClient.ensure_path(ZOOKEEPER_PARENT_PATH + "/leader/electionpath")
         vprint('waiting for the election!', None, logger, logging.INFO)
         # 阻塞线程，直到选举成功。并调用taskdispacher_leader_func
-        election = zkClient.Election(MONITOR_PARENT_PATH + "/leader/electionpath")
+        election = zkClient.Election(ZOOKEEPER_PARENT_PATH + "/leader/electionpath")
         election.run(taskdispacher_leader_func)
     except Exception, e:
-        set_interrupt_happend()
         vprint('[%s]received a exception %s', ('main',str(e),), logger, logging.ERROR)
     finally:
-        if zkClient is not None:
-            zkClient.stop()
-        if scheduler is not None:
-            scheduler.shutdown()
+        set_interrupt_happend()
+        try:
+            if zkClient is not None:
+                zkClient.stop()
+        except:
+            pass
+        try:
+            if mqClient is not None:
+                mqClient.disconnect()
+        except:
+            pass
+        try:
+            if scheduler is not None:
+                scheduler.shutdown()
+        except:
+            pass
+        try:
+            if rpycserver is not None:
+                rpycserver.close()
+        except:
+            pass
         vprint('task %s is stop!' , (str(workerid),), logger, logging.INFO)

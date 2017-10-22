@@ -13,6 +13,11 @@ import subprocess
 from hashlib import sha1
 from config import *
 
+IS_CONSOLE_PRINT = False
+if STATIC_CONFIGS.has_key('LOGS') == True:
+    if STATIC_CONFIGS['LOGS'].has_key('CONSOLE_PRINT') == True:
+        IS_CONSOLE_PRINT=STATIC_CONFIGS['LOGS']['CONSOLE_PRINT']
+
 try:
     import locale
     (slocale, sencodstr) = locale.getdefaultlocale()
@@ -133,24 +138,10 @@ def tdecode_rpyc_res(data, key):
     result = tdecode(data,key)
     return json.loads(result)
 
-def runcommands(message,logger):
-    jsonobj = json.loads(message)
-    response={}
-    response['code'] = "0"
-    response['response'] = []
-    for i in range(0, len(jsonobj)):
-        ijsonstr = jsonobj[i]['module_oper']
-        ijsonstr = tencode(ijsonstr, RPYC_SECRET_KEY);
-        vprint('prepare to invoke executor %s' ,(str(ijsonstr)), logger, logging.DEBUG)
-        p = subprocess.Popen('python executor.py ' + ijsonstr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        p.wait()
-        result = tdecode(p.stdout.read(), RPYC_SECRET_KEY)
-        dresult = result.decode('utf-8')
-        response['response'].append(result)
-        if p.returncode != 0:
-            vprint('response error: body: %s \n',(dresult,), logger, logging.ERROR)
-            response['code'] = "1"
-        else:
-            vprint('response: body: %s \n' , (dresult,), logger, logging.ERROR)
-            break
-    return json.dumps(response);
+def as_activemq_hosts_list(data):
+    lists=[]
+    datas = data.split(',')
+    for i in range(0,len(datas)):
+        (host, port) = datas[i].split(':')
+        lists.append((host, int(port)))
+    return lists
