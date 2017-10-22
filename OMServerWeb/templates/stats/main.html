@@ -1,0 +1,208 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>{{system_name}}</title>
+<meta  name="keywords" content="{{system_name}} " />
+<link href="/static/css/common.css" rel="stylesheet" type="text/css">
+<script language="javascript" src="/static/js/prototype.js"></script>
+</head>
+<style>
+.wrapper { 
+	display: grid; 
+	grid-template-columns: 1fr 1fr 1fr;
+	grid-gap:5px;
+} 
+.box { 
+	background-color: lightsalmon; 
+	color: #fff;
+	padding: 10px; 
+	text-align: left;
+	height:150px;
+} 
+.box2 { 
+	background-color: lightsalmon; 
+	color: #fff;
+	padding: 10px; 
+	text-align: left;
+	height:130px;
+	width:400px;
+	border:1px solid #666;
+} 
+</style>
+<script language="javascript">
+function renderMonitor1(jresultLeader) {
+    var htmlstr = ''
+	htmlstr+='<div class="box2"><ul>';
+	htmlstr+='<li>节点:' + jresultLeader['host'] + '</li>';
+	htmlstr+='<li>端口:' + jresultLeader['port'] + '</li>';
+	htmlstr+='<li>说明:' + '监控主节点'+ '</li>';
+	htmlstr+='<li>路径:' + jresultLeader['path'] + '</li>';
+	htmlstr+='<li>线程ID:' + jresultLeader['pid'] + '</li>';
+	htmlstr+='<li>线程内存使用率:' + jresultLeader['pid_memory_percent'] + '</li>';
+	htmlstr+='<li>线程CPU利用率:' + jresultLeader['pid_cpu_percent'] + '</li>';
+
+	htmlstr+='</ul></div>';
+	return htmlstr;
+}
+function renderLeader1(jresultLeader) {
+    var htmlstr = '';
+	if (jresultLeader['leader'] != undefined ){
+		htmlstr+='<div class="box2"><ul>';
+		htmlstr+='<li>节点:' + jresultLeader['leader']['host'] + '</li>';
+		htmlstr+='<li>端口:' + jresultLeader['leader']['port'] + '</li>';
+		htmlstr+='<li>说明:' + '主节点'+ '</li>';
+		htmlstr+='<li>任务总数:' + jresultLeader['leader']['count'] + '</li>';
+		htmlstr+='<li>路径:' + jresultLeader['leader']['path'] + '</li>';
+		htmlstr+='<li>线程ID:' + jresultLeader['leader']['pid'] + '</li>';
+		htmlstr+='<li>线程内存使用率:' + jresultLeader['leader']['pid_memory_percent'] + '</li>';
+		htmlstr+='<li>线程CPU利用率:' + jresultLeader['leader']['pid_cpu_percent'] + '</li>';
+
+		htmlstr+='</ul></div>';
+	} else {
+	    htmlstr+= '<div class="box2">定时任务派发节点：没有主控节点运行</div>'
+	}
+	return htmlstr;
+}
+function renderLeader2(jresultLeader) {
+    var htmlstr = '';
+	htmlstr+='<div class="wrapper">';
+	for(var k in jresultLeader) {
+		if(k != 'leader'){
+		    htmlstr+='<div class="box">';
+			htmlstr+='<ul>';
+			htmlstr+='<li>节点:' + jresultLeader[k]['host'] + '</li>';
+			htmlstr+='<li>端口:' + jresultLeader[k]['port'] + '</li>';
+			htmlstr+='<li>权重:' + jresultLeader[k]['weight'] + '</li>';
+			htmlstr+='<li>说明:' + '子节点'+ '</li>';
+			htmlstr+='<li>任务个数:' + jresultLeader[k]['count'] + '</li>';
+			htmlstr+='<li>路径:' + jresultLeader[k]['path'] + '</li>';
+			htmlstr+='<li>线程ID:' + jresultLeader['leader']['pid'] + '</li>';
+			htmlstr+='<li>线程内存使用率:' + jresultLeader['leader']['pid_memory_percent'] + '</li>';
+			htmlstr+='<li>线程CPU利用率:' + jresultLeader['leader']['pid_cpu_percent'] + '</li>';
+			htmlstr+='</ul>';
+			htmlstr+='<div>';
+		}
+	}
+	htmlstr+='</div>';
+	return htmlstr;
+}
+function renderWork1(jresultLeader) {
+    var htmlstr = '';
+	if (jresultLeader['leader'] != undefined ){
+		htmlstr+='<div class="box2"><ul>';
+		htmlstr+='<li>节点:' + jresultLeader['leader']['host'] + '</li>';
+		htmlstr+='<li>端口:' + jresultLeader['leader']['port'] + '</li>';
+		htmlstr+='<li>说明:' + '主节点'+ '</li>';
+		htmlstr+='<li>路径:' + jresultLeader['leader']['path'] + '</li>';
+		htmlstr+='<li>线程ID:' + jresultLeader['leader']['pid'] + '</li>';
+		htmlstr+='<li>线程内存使用率:' + jresultLeader['leader']['pid_memory_percent'] + '</li>';
+		htmlstr+='<li>线程CPU利用率:' + jresultLeader['leader']['pid_cpu_percent'] + '</li>';
+		htmlstr+='</ul></div>';
+	} else {
+		htmlstr+='<div class="box2">任务执行节点：没有主控节点运行</div>';
+	}
+	
+	return htmlstr;
+}
+function renderWork2(jresultLeader) {
+    var htmlstr = '';
+	htmlstr+='<div class="wrapper">';
+	for(var k in jresultLeader) {
+		if(k != 'leader'){
+			htmlstr+='<div class="box">';
+			htmlstr+='<ul class="autoul">';
+			htmlstr+='<li>节点:' + jresultLeader[k]['host'] + '</li>';
+			htmlstr+='<li>端口:' + jresultLeader[k]['port'] + '</li>';
+			htmlstr+='<li>说明:' + '子节点'+ '</li>';
+			htmlstr+='<li>路径:' + jresultLeader[k]['path'] + '</li>';
+			htmlstr+='<li>线程ID:' + jresultLeader['leader']['pid'] + '</li>';
+			htmlstr+='<li>线程内存使用率:' + jresultLeader['leader']['pid_memory_percent'] + '</li>';
+			htmlstr+='<li>线程CPU利用率:' + jresultLeader['leader']['pid_cpu_percent'] + '</li>';
+			htmlstr+='</ul>';
+			htmlstr+='<div>';
+		}
+	}
+	htmlstr+='</div>';
+	return htmlstr;
+}
+function loadTaskNodeStatus(){
+	var myAjax = new Ajax.Request('/stats/scheduler_load/', {method: 'get',onComplete: function(originalRequest) {
+		
+		var resultObj = JSON.parse(originalRequest.responseText);
+		var resultMsg = JSON.parse(resultObj['msg'])
+		var htmlstr = '';
+		var substr = '';
+		if (resultObj['code'] == 'C_0000') {
+			htmlstr = '';
+			if (resultMsg["monitor"] != undefined ){
+				lresult = resultMsg['monitor'];
+				//jresult = JSON.parse(lresult);
+				substr = renderMonitor1(lresult);
+				if(substr != ''){
+					htmlstr+=substr;
+				}
+			} else {
+				htmlstr='<div class="box2">没有任何监控节点运行</div>';
+			}
+			document.getElementById("content0").innerHTML = htmlstr;
+			htmlstr = '';
+			if (resultMsg["leader"] != undefined ){
+				lresult = resultMsg['leader'];
+				jresult = JSON.parse(lresult);
+				htmlstr+= renderLeader1(jresult);
+				substr= renderLeader2(jresult);
+				if(substr != '<div class="wrapper"></div>'){
+					htmlstr+=substr;
+				} else {
+					htmlstr+='<div class="wrapper"><div class="box">定时任务派发节点：没有任何工作节点运行</div></div>';
+				}
+			} else {
+				htmlstr='<div class="box2">没有任何定时任务派发节点运行</div>';
+			}
+			document.getElementById("content1").innerHTML = htmlstr;
+			htmlstr = '';
+			if (resultMsg["worker"] != undefined ){
+				htmlstr = '';
+				wresult = resultMsg['worker'];
+				jresult = JSON.parse(wresult);
+				htmlstr+= renderWork1(jresult);
+				substr = renderWork2(jresult);
+				if(substr != '<div class="wrapper"></div>'){
+					htmlstr+=substr;
+				} else {
+					htmlstr+='<div class="wrapper"><div class="box">任务执行节点：没有任何工作节点运行</div></div>';
+				}
+			} else {
+				htmlstr='<div class="box2">没有任何任务执行节点运行</div>';
+			}
+			document.getElementById("content2").innerHTML = htmlstr;
+		} else {
+			document.getElementById("content").innerHTML = resultObj['msg'];
+		}
+	}});
+}
+function balanceTaskNode() {
+	var myAjax = new Ajax.Request('/stats/scheduler_rebalance/', { method: 'get',onComplete: function(originalRequest) {
+		var resultObj = JSON.parse(originalRequest.responseText);
+		if (resultObj['code'] == 'C_0000') {
+			alert('提交调整申请，请等待！');
+		} else {
+			alert(resultObj['msg']);
+		}
+	}});
+}
+</script>
+<body onload="">
+<table style="height:100%;width:100%">
+ <form action="">
+  <div>
+     <input type="button" name="Submit_run" value="刷新工作节点状态" id="sys_run_button1" onClick="loadTaskNodeStatus();"> 
+	 <input type="button" name="Submit_run" value="重新平衡" id="sys_run_button2" onClick="balanceTaskNode();"> 
+  </div>
+  <div id='content0'></div>
+  <div id='content1'></div>
+  <div id='content2'></div>
+  </form>
+</table>
+</body>
+</html>
